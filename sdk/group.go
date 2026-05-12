@@ -639,21 +639,21 @@ func (rc *RongCloud) GroupDismiss(id, member string, msgOptions ...MessageOption
 /*
 *@param  id: Group ID.
 *@param  members: List of muted group members.
-*@param  minute: Mute duration in minutes, with a maximum value of 43200 minutes.
+*@param  minute: Mute duration in minutes, valid range is 0-43200 minutes (0 means permanent mute).
 *
 *@return error
  */
 func (rc *RongCloud) GroupGagAdd(id string, members []string, minute int) error {
 	if id == "" {
-		return RCErrorNew(1002, "Paramer 'id' is required")
+		return RCErrorNew(1002, "Parameter 'id' is required")
 	}
 
 	if len(members) == 0 {
-		return RCErrorNew(1002, "Paramer 'members' is required")
+		return RCErrorNew(1002, "Parameter 'members' is required")
 	}
 
-	if minute == 0 {
-		return RCErrorNew(1002, "Paramer 'minute' is required")
+	if minute < 0 || minute > 43200 {
+		return RCErrorNew(1002, "Parameter 'minute' must be in range 0-43200")
 	}
 
 	req := httplib.Post(rc.rongCloudURI + "/group/user/gag/add." + ReqType)
@@ -676,17 +676,17 @@ func (rc *RongCloud) GroupGagAdd(id string, members []string, minute int) error 
 /*
 *@param  id: The group ID.
 *@param  members: The list of members to be muted.
-*@param  minute: The duration of the mute in minutes, with a maximum value of 43200 minutes.
+*@param  minute: The duration of the mute in minutes, valid range is 0-43200 minutes (0 means permanent mute).
 *
 *@return error
  */
 func (rc *RongCloud) GroupMuteMembersAdd(id string, members []string, minute int) error {
 	if len(members) == 0 {
-		return RCErrorNew(1002, "Paramer 'members' is required")
+		return RCErrorNew(1002, "Parameter 'members' is required")
 	}
 
-	if minute == 0 {
-		return RCErrorNew(1002, "Paramer 'minute' is required")
+	if minute < 0 || minute > 43200 {
+		return RCErrorNew(1002, "Parameter 'minute' must be in range 0-43200")
 	}
 
 	req := httplib.Post(rc.rongCloudURI + "/group/user/gag/add." + ReqType)
