@@ -28,6 +28,14 @@ type rcMsg interface {
 }
 
 // MsgUserInfo RongCloud built-in message user information
+type MsgUserInfoJsonExtra struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Icon     string `json:"icon"`
+	Portrait string `json:"portrait"`
+	Extra    map[string]string `json:"extra"`
+}
+
 type MsgUserInfo struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
@@ -191,11 +199,13 @@ type History struct {
 }
 
 // BroadcastRecallContent Content of message broadcast recall
+// Note: IsAdmin and IsDelete use bool for JSON serialization.
+// Other recall APIs use int in msgOptions for form-parameter compatibility.
 type BroadcastRecallContent struct {
 	MessageId        string `json:"messageUId"`
 	ConversationType int    `json:"conversationType"`
-	IsAdmin          int    `json:"isAdmin"`
-	IsDelete         int    `json:"isDelete"`
+	IsAdmin          bool   `json:"isAdmin"`
+	IsDelete         bool   `json:"isDelete"`
 }
 
 // ChatRoomKVNotiMessage Chatroom custom attributes notification message
@@ -438,6 +448,15 @@ func WithMsgPushExt(pushExt string) MsgOption {
 	return func(options *msgOptions) {
 		options.pushExt = pushExt
 	}
+}
+
+// WithMsgPushExtObject serializes typed push notification attributes for message sending APIs.
+func WithMsgPushExtObject(pushExt *PushExt) (MsgOption, error) {
+	value, err := pushExt.ToString()
+	if err != nil {
+		return nil, err
+	}
+	return WithMsgPushExt(value), nil
 }
 
 // pushContent String Defines the displayed push content. If objectName is a built-in message type of RongCloud, the user will definitely receive push information after sending.
@@ -2395,4 +2414,123 @@ func (rc *RongCloud) ConversationMessageHistoryClean(conversationType, fromUserI
 		rc.urlError(err)
 	}
 	return err
+}
+
+// StreamMessage represents a stream message content (RC:StreamMsg)
+type StreamMessage struct {
+	Content        string            `json:"content"`
+	Seq            int64             `json:"seq"`
+	Complete       bool              `json:"complete"`
+	CompleteReason *int              `json:"completeReason,omitempty"`
+	Type           string            `json:"type,omitempty"`
+	MessageUID     string            `json:"messageUID,omitempty"`
+	User           *MsgUserInfoJsonExtra      `json:"user,omitempty"`
+	Extra          map[string]string `json:"extra,omitempty"`
+	// MentionedInfo carries @ (mention) target info. Only valid in group/ultra-group
+	// scenarios and only needs to be set on the first stream; continuation streams reuse it.
+	// When set, GroupStreamMessage.IsMentioned must be 1, otherwise it is ignored by the server.
+	MentionedInfo *MentionedInfo `json:"mentionedInfo,omitempty"`
+}
+
+// StreamMessageResult response for stream message API
+type StreamMessageResult struct {
+	Code         int    `json:"code"`
+	ErrorMessage string `json:"errorMessage,omitempty"`
+	MessageUID   string `json:"messageUID,omitempty"`
+}
+
+// PrivateStreamMessage request body for sending a private stream message
+type PrivateStreamMessage struct {
+	FromUserID           string            `json:"fromUserId"`
+	ToUserID             string            `json:"toUserId"`
+	ObjectName           string            `json:"objectName"`
+	Content              StreamMessage     `json:"content"`
+	IsIncludeSender      *int              `json:"isIncludeSender,omitempty"`
+	IsPersisted          *int              `json:"isPersisted,omitempty"`
+	ExtraContent         string            `json:"extraContent,omitempty"`
+	DisableUpdateLastMsg *bool             `json:"disableUpdateLastMsg,omitempty"`
+}
+
+// GroupStreamMessage request body for sending a group stream message
+type GroupStreamMessage struct {
+	FromUserID           string            `json:"fromUserId"`
+	ToGroupID            string            `json:"toGroupId"`
+	ObjectName           string            `json:"objectName"`
+	Content              StreamMessage     `json:"content"`
+	ToUserIDs            []string          `json:"toUserIds,omitempty"`
+	IsIncludeSender      *int              `json:"isIncludeSender,omitempty"`
+	IsPersisted          *int              `json:"isPersisted,omitempty"`
+	IsMentioned          *int              `json:"isMentioned,omitempty"`
+	ExtraContent         string            `json:"extraContent,omitempty"`
+	DisableUpdateLastMsg *bool             `json:"disableUpdateLastMsg,omitempty"`
+}
+
+// PrivateStreamSend sends a stream message to a single user.
+// API: POST /v3/message/private/publish_stream.json
+func (rc *RongCloud) PrivateStreamSend(msg PrivateStreamMessage) (StreamMessageResult, error) {
+	var result StreamMessageResult
+
+	if msg.FromUserID == "" {
+		return result, RCErrorNew(1002, "Parameter 'fromUserId' is required")
+	}
+	if msg.ToUserID == "" {
+		return result, RCErrorNew(1002, "Parameter 'toUserId' is required")
+	}
+	if msg.ObjectName == "" {
+		return result, RCErrorNew(1002, "Parameter 'objectName' is required")
+	}
+
+	req := httplib.Post(rc.rongCloudURI + "/v3/message/private/publish_stream.json")
+	req.SetTimeout(time.Second*rc.timeout, time.Second*rc.timeout)
+	rc.fillHeaderV2(req)
+
+	req, err := req.JSONBody(msg)
+	if err != nil {
+		return result, err
+	}
+
+	resp, err := rc.do(req)
+	if err != nil {
+		return result, err
+	}
+
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
+// GroupStreamSend sends a stream message to a group.
+// API: POST /v3/message/group/publish_stream.json
+func (rc *RongCloud) GroupStreamSend(msg GroupStreamMessage) (StreamMessageResult, error) {
+	var result StreamMessageResult
+
+	if msg.FromUserID == "" {
+		return result, RCErrorNew(1002, "Parameter 'fromUserId' is required")
+	}
+	if msg.ToGroupID == "" {
+		return result, RCErrorNew(1002, "Parameter 'toGroupId' is required")
+	}
+	if msg.ObjectName == "" {
+		return result, RCErrorNew(1002, "Parameter 'objectName' is required")
+	}
+
+	req := httplib.Post(rc.rongCloudURI + "/v3/message/group/publish_stream.json")
+	req.SetTimeout(time.Second*rc.timeout, time.Second*rc.timeout)
+	rc.fillHeaderV2(req)
+
+	req, err := req.JSONBody(msg)
+	if err != nil {
+		return result, err
+	}
+
+	resp, err := rc.do(req)
+	if err != nil {
+		return result, err
+	}
+
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return result, err
+	}
+	return result, nil
 }
