@@ -109,32 +109,21 @@ func TestRongCloud_UGMessageModify(t *testing.T) {
 			Title:                "you have a new message.",
 			TemplateId:           "123456",
 			ForceShowPushContent: 0,
-			PushConfigs: []map[string]map[string]string{
+			PushConfigs: []PushConfig{
 				{
-					"HW": {
-						"channelId": "NotificationKanong",
-					},
+					HW: &HWAndroidPush{ChannelId: "NotificationKanong"},
 				},
 				{
-					"MI": {
-						"channelId": "rongcloud_kanong",
-					},
+					MI: &MIAndroidPush{ChannelId: "rongcloud_kanong"},
 				},
 				{
-					"OPPO": {
-						"channelId": "rc_notification_id",
-					},
+					OPPO: &OPPOAndroidPush{ChannelId: "rc_notification_id"},
 				},
 				{
-					"VIVO": {
-						"classification": "0",
-					},
+					VIVO: &VIVOAndroidPush{Classification: "0"},
 				},
 				{
-					"APNs": {
-						"thread-id":        "1",
-						"apns-collapse-id": "1",
-					},
+					APNs: &APNsPushConfig{ThreadID: "1", CollapseID: "1"},
 				},
 			},
 		}, "testExp0309")
@@ -167,8 +156,8 @@ func TestMessageBroadcastRecall(t *testing.T) {
 	content := BroadcastRecallContent{
 		MessageId:        "BC52-ESJ0-022O-001H",
 		ConversationType: 6,
-		IsAdmin:          0,
-		IsDelete:         0,
+		IsAdmin:          false,
+		IsDelete:         false,
 	}
 
 	result, err := rc.MessageBroadcastRecall("123", "RC:RcCmd", content)
@@ -793,5 +782,95 @@ func TestRongCloud_ConversationMessageHistoryClean(t *testing.T) {
 		t.Logf("ConversationMessageHistoryClean returned error (acceptable in unit env): %v", err)
 	} else {
 		t.Log("ConversationMessageHistoryClean ok")
+	}
+}
+
+func TestRongCloud_PrivateStreamSend(t *testing.T) {
+	rc := NewRongCloud(
+		os.Getenv("APP_KEY"),
+		os.Getenv("APP_SECRET"),
+		REGION_BJ,
+	)
+
+	// First packet
+	msg := PrivateStreamMessage{
+		FromUserID: "user001",
+		ToUserID:   "user002",
+		ObjectName: "RC:StreamMsg",
+		Content: StreamMessage{
+			Content:  "Hello",
+			Seq:      1,
+			Complete: false,
+			Type:     "text",
+		},
+	}
+
+	result, err := rc.PrivateStreamSend(msg)
+	if err != nil {
+		t.Logf("PrivateStreamSend first packet error: %v", err)
+	} else {
+		t.Logf("PrivateStreamSend first: code=%d, messageUID=%s", result.Code, result.MessageUID)
+	}
+
+	// Continuation packet
+	msg.Content.Content = "World"
+	msg.Content.Seq = 2
+	msg.MessageUID = result.MessageUID
+	msg.Content.MessageUID = result.MessageUID
+
+	result, err = rc.PrivateStreamSend(msg)
+	if err != nil {
+		t.Logf("PrivateStreamSend cont packet error: %v", err)
+	} else {
+		t.Logf("PrivateStreamSend cont: code=%d, messageUID=%s", result.Code, result.MessageUID)
+	}
+
+	// End packet
+	msg.Content.Content = "!"
+	msg.Content.Seq = 3
+	msg.Content.Complete = true
+
+	result, err = rc.PrivateStreamSend(msg)
+	if err != nil {
+		t.Logf("PrivateStreamSend end packet error: %v", err)
+	} else {
+		t.Logf("PrivateStreamSend end: code=%d, messageUID=%s", result.Code, result.MessageUID)
+	}
+}
+
+func TestRongCloud_GroupStreamSend(t *testing.T) {
+	rc := NewRongCloud(
+		os.Getenv("APP_KEY"),
+		os.Getenv("APP_SECRET"),
+		REGION_BJ,
+	)
+
+	isMentioned := 1
+	msg := GroupStreamMessage{
+		FromUserID: "user001",
+		ToGroupID:  "group001",
+		ObjectName: "RC:StreamMsg",
+		Content: StreamMessage{
+			Content:  "Group stream content",
+			Seq:      1,
+			Complete: false,
+			Type:     "text",
+			// mentionedInfo is only valid on the first stream in group scenarios,
+			// and requires IsMentioned = 1 to take effect.
+			MentionedInfo: &MentionedInfo{
+				Type:        2,
+				UserIDs:     []string{"user002"},
+				PushContent: "Someone mentioned you",
+			},
+		},
+		ToUserIDs:   []string{"user002", "user003"},
+		IsMentioned: &isMentioned,
+	}
+
+	result, err := rc.GroupStreamSend(msg)
+	if err != nil {
+		t.Logf("GroupStreamSend error: %v", err)
+	} else {
+		t.Logf("GroupStreamSend: code=%d, messageUID=%s", result.Code, result.MessageUID)
 	}
 }

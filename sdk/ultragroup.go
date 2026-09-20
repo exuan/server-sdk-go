@@ -1249,13 +1249,6 @@ func (rc *RongCloud) UGMessageExpansionQuery(groupId, msgUID, busChannel string)
 	return data, nil
 }
 
-type PushExt struct {
-	Title                string                         `json:"title,omitempty"`
-	TemplateId           string                         `json:"templateId,omitempty"`
-	ForceShowPushContent int                            `json:"forceShowPushContent,omitempty"`
-	PushConfigs          []map[string]map[string]string `json:"pushConfigs,omitempty"`
-}
-
 // UGMessagePublish Sends a message to an ultra group
 // Documentation: https://doc.rongcloud.cn/imserver/server/v1/message/msgsend/ultragroup
 func (rc *RongCloud) UGMessagePublish(fromUserId, objectName, content, pushContent, pushData, isPersisted,

@@ -489,32 +489,21 @@ func Test_UGMessagePublish(t *testing.T) {
 			Title:                "you have a new message.",
 			TemplateId:           "123456",
 			ForceShowPushContent: 0,
-			PushConfigs: []map[string]map[string]string{
+			PushConfigs: []PushConfig{
 				{
-					"HW": {
-						"channelId": "NotificationKanong",
-					},
+					HW: &HWAndroidPush{ChannelId: "NotificationKanong"},
 				},
 				{
-					"MI": {
-						"channelId": "rongcloud_kanong",
-					},
+					MI: &MIAndroidPush{ChannelId: "rongcloud_kanong"},
 				},
 				{
-					"OPPO": {
-						"channelId": "rc_notification_id",
-					},
+					OPPO: &OPPOAndroidPush{ChannelId: "rc_notification_id"},
 				},
 				{
-					"VIVO": {
-						"classification": "0",
-					},
+					VIVO: &VIVOAndroidPush{Classification: "0"},
 				},
 				{
-					"APNs": {
-						"thread-id":        "1",
-						"apns-collapse-id": "1",
-					},
+					APNs: &APNsPushConfig{ThreadID: "1", CollapseID: "1"},
 				},
 			},
 		}, "testExp0309")

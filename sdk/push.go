@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/astaxie/beego/httplib"
@@ -74,15 +73,118 @@ type IOSPush struct {
 	ApnsCollapseId   string `json:"apns-collapse-id,omitempty"` // ApnsCollapseId for the iOS platform, supported from iOS10. Messages with the same ID are merged into one. (Optional)
 }
 
+// HonorAndroidPush Settings for Honor push and additional information.
+type HonorAndroidPush struct {
+	Importance string `json:"importance,omitempty"`
+	Image      string `json:"image,omitempty"`
+}
+
+// HWAndroidPush Settings for Huawei push and additional information.
+type HWAndroidPush struct {
+	ChannelId  string `json:"channelId,omitempty"`
+	Importance string `json:"importance,omitempty"`
+	Image      string `json:"image,omitempty"`
+	Category   string `json:"category,omitempty"`
+}
+
+// MIAndroidPush Settings for Xiaomi push and additional information.
+type MIAndroidPush struct {
+	ChannelId     string            `json:"channelId,omitempty"`
+	LargeIconUri  string            `json:"large_icon_uri,omitempty"`
+	TemplateId    string            `json:"templateId,omitempty"`
+	TemplateParam map[string]string `json:"templateParam,omitempty"`
+}
+
+// OPPOAndroidPush Settings for OPPO push and additional information.
+type OPPOAndroidPush struct {
+	ChannelId   string `json:"channelId,omitempty"`
+	Category    string `json:"category,omitempty"`
+	NotifyLevel int    `json:"notify_level,omitempty"`
+}
+
+// VIVOAndroidPush Settings for vivo push and additional information.
+type VIVOAndroidPush struct {
+	Classification string `json:"classification,omitempty"`
+	Category       string `json:"category,omitempty"`
+}
+
+// FCMAndroidPush Settings for Google FCM push and additional information.
+type FCMAndroidPush struct {
+	ChannelId   string `json:"channelId,omitempty"`
+	CollapseKey string `json:"collapse_key,omitempty"`
+	ImageURL    string `json:"imageUrl,omitempty"`
+}
+
+// MeizuAndroidPush Settings for Meizu push and additional information.
+type MeizuAndroidPush struct {
+	NoticeMsgType int `json:"noticeMsgType,omitempty"`
+}
+
 // AndroidPush Settings for Android platform push and additional information.
 type AndroidPush struct {
-	Alert          string `json:"alert,omitempty"`          // Push message content for iOS or Android platforms. If specified, the default push message content is overridden and cannot be empty. (Optional)
-	Extras         Extras `json:"extras,omitempty"`         // Extras should implement the Extras Interface. Additional information for iOS or Android platforms. Developers can parse this in the App as needed. PushNotification does not have this field. (Optional)
-	ChannelId      string `json:"channelId,omitempty"`      // ChannelId for vendor-specific push channels. Currently supported vendors include: "MI" for Xiaomi, "HW" for Huawei, "OPPO". (Optional)
-	Importance     string `json:"importance,omitempty"`     // Importance for Huawei notification priority, values: NORMAL, LOW, default is NORMAL for important messages. (Optional)
-	Image          string `json:"image,omitempty"`          // Image URL for custom notification bar icon on the right for Huawei push. If not set, the icon is not displayed. URL must use HTTPS protocol, e.g., https://example.com/image.png. Icon file must be less than 512KB, recommended size: 40dp x 40dp, corner radius: 8dp. Icons larger than the recommended size may be compressed or not fully displayed. (Optional)
-	LargeIconUri   string `json:"large_icon_uri,omitempty"` // LargeIconUri for custom notification bar icon on the right for Xiaomi push. If not set, the icon is not displayed. Domestic version only supports MIUI12 and above; international version supports. Image requirements: 120 * 120px, png or jpg format. (Optional)
-	Classification string `json:"classification,omitempty"` // Classification for vivo push channel type. 0 for operational messages, 1 for system messages, default is the push channel type set in the developer backend for vivo push. (Optional)
+	Alert  string            `json:"alert,omitempty"`  // Push message content for Android. If specified, the default push message content is overridden and cannot be empty. (Optional)
+	Extras Extras            `json:"extras,omitempty"` // Additional information for Android. Developers can parse this in the App as needed. (Optional)
+	Honor  *HonorAndroidPush `json:"honor,omitempty"`  // Honor-specific push settings. (Optional)
+	HW     *HWAndroidPush    `json:"hw,omitempty"`     // Huawei-specific push settings. (Optional)
+	MI     *MIAndroidPush    `json:"mi,omitempty"`     // Xiaomi-specific push settings. (Optional)
+	OPPO   *OPPOAndroidPush  `json:"oppo,omitempty"`   // OPPO-specific push settings. (Optional)
+	VIVO   *VIVOAndroidPush  `json:"vivo,omitempty"`   // vivo-specific push settings. (Optional)
+	FCM    *FCMAndroidPush   `json:"fcm,omitempty"`    // Google FCM-specific push settings. (Optional)
+	Meizu  *MeizuAndroidPush `json:"meizu,omitempty"`  // Meizu-specific push settings. (Optional)
+}
+
+// OHOSPush Settings for HarmonyOS push.
+type OHOSPush struct {
+	Category string `json:"category,omitempty"`
+	Image    string `json:"image,omitempty"`
+}
+
+// HarmonyOSPush Settings for HarmonyOS platform push and additional information.
+type HarmonyOSPush struct {
+	Alert  string    `json:"alert,omitempty"`
+	OHOS   *OHOSPush `json:"ohos,omitempty"`
+	Extras Extras    `json:"extras,omitempty"`
+}
+
+// APNsPushConfig Settings for APNs in message push extensions.
+type APNsPushConfig struct {
+	ThreadID          string `json:"thread-id,omitempty"`
+	CollapseID        string `json:"apns-collapse-id,omitempty"`
+	RichMediaURI      string `json:"richMediaUri,omitempty"`
+	InterruptionLevel string `json:"interruption-level,omitempty"`
+}
+
+// PushConfig contains one or more vendor-specific message push settings.
+type PushConfig struct {
+	HW    *HWAndroidPush    `json:"HW,omitempty"`
+	MI    *MIAndroidPush    `json:"MI,omitempty"`
+	OPPO  *OPPOAndroidPush  `json:"OPPO,omitempty"`
+	VIVO  *VIVOAndroidPush  `json:"VIVO,omitempty"`
+	HONOR *HonorAndroidPush `json:"HONOR,omitempty"`
+	FCM   *FCMAndroidPush   `json:"FCM,omitempty"`
+	OHOS  *OHOSPush         `json:"OHOS,omitempty"`
+	MEIZU *MeizuAndroidPush `json:"MEIZU,omitempty"`
+	APNs  *APNsPushConfig   `json:"APNs,omitempty"`
+}
+
+// PushExt defines push notification attributes for message sending APIs.
+type PushExt struct {
+	Title                string       `json:"title,omitempty"`
+	TemplateId           string       `json:"templateId,omitempty"`
+	ForceShowPushContent int          `json:"forceShowPushContent,omitempty"`
+	PushConfigs          []PushConfig `json:"pushConfigs,omitempty"`
+}
+
+// ToString serializes the push extension for form-based message APIs.
+func (pushExt *PushExt) ToString() (string, error) {
+	if pushExt == nil {
+		return "", nil
+	}
+	body, err := json.Marshal(pushExt)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
 }
 
 // Notification Push message content by operating system type. If platform is set to push messages to both iOS and Android, but notification only sets iOS push content, the Android push content will default to the initial alert setting. (Required)
@@ -102,10 +204,11 @@ type Audience struct {
 }
 
 type PushNotification struct {
-	Title       string                 `json:"title,omitempty"`   // Title The title displayed in the notification bar, with a maximum of 50 characters.
-	PushContent string                 `json:"pushContent"`       // PushContent The content of the push notification.
-	IOS         IOSPush                `json:"ios,omitempty"`     // IOS Settings for push notifications and additional information on the iOS platform. For details, refer to the ios structure description.
-	Android     map[string]interface{} `json:"android,omitempty"` // Android Settings for push notifications and additional information on the Android platform. For details, refer to the android structure description.
+	Title       string         `json:"title,omitempty"`     // Title The title displayed in the notification bar, with a maximum of 50 characters.
+	PushContent string         `json:"pushContent"`         // PushContent The content of the push notification.
+	IOS         IOSPush        `json:"ios,omitempty"`       // IOS Settings for push notifications and additional information on the iOS platform. For details, refer to the ios structure description.
+	Android     *AndroidPush   `json:"android,omitempty"`   // Android Settings for push notifications and additional information.
+	HarmonyOS   *HarmonyOSPush `json:"harmonyOS,omitempty"` // HarmonyOS Settings for push notifications and additional information.
 }
 
 type PushCustomData struct {
@@ -142,8 +245,10 @@ type PushCustomData struct {
 				Image      string `json:"image"`
 			} `json:"hw"`
 			Mi struct {
-				ChannelId    string `json:"channelId"`
-				LargeIconUri string `json:"large_icon_uri"`
+				ChannelId     string            `json:"channelId"`
+				LargeIconUri  string            `json:"large_icon_uri"`
+				TemplateId    string            `json:"templateId,omitempty"`
+				TemplateParam map[string]string `json:"templateParam,omitempty"`
 			} `json:"mi"`
 			Oppo struct {
 				ChannelId string `json:"channelId"`
@@ -272,15 +377,6 @@ func (rc *RongCloud) PushUser(notification *PushNotification, users ...string) e
 
 	if userLens := len(users); userLens > 100 || userLens <= 0 {
 		return errors.New("Invalid users")
-	}
-
-	if notification.Android != nil {
-		android := make(map[string]interface{})
-		for key, val := range notification.Android {
-			k := strings.ToLower(key)
-			android[k] = val
-		}
-		notification.Android = android
 	}
 
 	var err error
